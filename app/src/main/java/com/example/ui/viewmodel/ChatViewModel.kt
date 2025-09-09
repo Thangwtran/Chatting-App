@@ -40,6 +40,7 @@ class ChatViewModel(
     val isLoading: LiveData<Boolean> = _isLoading
 
     var token = ""
+
     init {
         token = Utils.createJwt()
     }
@@ -58,14 +59,16 @@ class ChatViewModel(
         val requestBody = UploadFileRequest(
             file = file
         )
-//        _isLoading.value = true
+        _isLoading.postValue(true)
+
         viewModelScope.launch(coroutineDispatcher) {
             val response = chatRepository.uploadFile(header, requestBody)
-//            _isLoading.value = false
+            _isLoading.postValue(false)
             when (response) {
                 is Resource.Error<*> -> {
                     _isError.postValue(response.message ?: "An unknown error occurred")
                 }
+
                 is Resource.Success<*> -> {
                     _fileResponse.postValue(response.data?.url)
                 }
@@ -83,14 +86,19 @@ class ChatViewModel(
             prompt = prompt,
             urlFile = urlFile
         )
-//        _isLoading.value = true
+        _isLoading.postValue(true)
         viewModelScope.launch(coroutineDispatcher) {
             val response = chatRepository.getSuggestQuestion(header, requestBody)
-//            _isLoading.value = false
+            _isLoading.postValue(false)
             Log.d("ViewModel", "getSuggestQuestion: ${response.data}")
             when (response) {
-                is Resource.Error<*> -> _isError.postValue(response.message ?: "An unknown error occurred")
-                is Resource.Success<*> -> _suggestedQuestion.postValue(response.data ?: SuggestionResponse(0, "huhu", "", ""))
+                is Resource.Error<*> -> _isError.postValue(
+                    response.message ?: "An unknown error occurred"
+                )
+
+                is Resource.Success<*> -> _suggestedQuestion.postValue(
+                    response.data ?: SuggestionResponse(0, "huhu", "", "")
+                )
             }
         }
     }
@@ -105,12 +113,15 @@ class ChatViewModel(
             chatInput = prompt,
             urlFile = urlFile
         )
-//        _isLoading.value = true
+        _isLoading.postValue(true)
         viewModelScope.launch(coroutineDispatcher) {
             val response = chatRepository.getAnswerRag(header, requestBody)
-//            _isLoading.value = false
+            _isLoading.postValue(false)
             when (response) {
-                is Resource.Error<*> -> _isError.postValue( response.message ?: "An unknown error occurred")
+                is Resource.Error<*> -> _isError.postValue(
+                    response.message ?: "An unknown error occurred"
+                )
+
                 is Resource.Success<*> -> _answerRag.postValue(response.data?.msg ?: "")
             }
         }
@@ -123,6 +134,7 @@ class ChatViewModel(
     fun addMessage(message: Message) {
         _messages.value = _messages.value?.plus(message)
     }
+
     inner class Factory(
         private val chatRepository: ChatRepository
     ) : ViewModelProvider.Factory {

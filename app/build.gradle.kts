@@ -48,6 +48,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     implementation("com.auth0:java-jwt:4.4.0")
+    implementation("com.airbnb.android:lottie:6.6.4")
 
 
     implementation(libs.androidx.core.ktx)

@@ -40,7 +40,10 @@ class MainActivity : AppCompatActivity() {
         setupViews()
         val api = RetrofitInstance.getApiService()
         val repository = ChatRepository(api)
-        viewModel = ViewModelProvider(this, ChatViewModel(repository).Factory(repository))[ChatViewModel::class.java]
+        viewModel = ViewModelProvider(
+            this,
+            ChatViewModel(repository).Factory(repository)
+        )[ChatViewModel::class.java]
         viewModel.fakeData()
         viewModel.getSuggestQuestion(
             language = "Tiếng Việt",
@@ -57,7 +60,7 @@ class MainActivity : AppCompatActivity() {
             binding.recyclerViewMessages.scrollToPosition(messages.size - 1)
         }
 
-        viewModel.answerRag.observe(this){
+        viewModel.answerRag.observe(this) {
             val botMessage = Message(text = it, isUser = false)
             viewModel.addMessage(botMessage)
         }
@@ -73,6 +76,15 @@ class MainActivity : AppCompatActivity() {
         viewModel.isError.observe(this) { error ->
             Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
         }
+        viewModel.isLoading.observe(this) { isLoading ->
+            if (isLoading) {
+                chatAdapter.startThinking()  // tạo message thinking + animation
+            } else {
+                val botReply = viewModel.answerRag.value ?: ""
+                chatAdapter.stopThinking(botReply) // update text + hide animation
+            }
+        }
+
     }
 
     private fun setupViews() {
