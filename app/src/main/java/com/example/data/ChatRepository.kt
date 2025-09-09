@@ -1,10 +1,17 @@
 package com.example.data
 
 import com.example.data.api.ApiService
+import com.example.data.api.request.RagRequest
+import com.example.data.api.request.SuggestQuestionRequest
+import com.example.data.api.request.UploadFileRequest
+import com.example.data.api.response.RagResponse
+import com.example.data.api.response.SuggestionResponse
+import com.example.data.api.response.UploadFileResponse
 import com.example.data.model.Message
+import com.example.utils.Resource
 
 class ChatRepository(
-//    private val chatApi: ApiService
+    private val chatApi: ApiService
 ) {
     fun fakeDataMessages(): List<Message> {
         return listOf(
@@ -54,6 +61,42 @@ class ChatRepository(
                 isTyping = true
             )
         )
+    }
+
+    suspend fun uploadFile(
+        headers: HashMap<String, String>,
+        body: UploadFileRequest
+    ): Resource<UploadFileResponse> {
+        val response = try {
+            chatApi.upLoadFile(headers, body)
+        } catch (e: Exception) {
+            return Resource.Error(message = e.message ?: "An unknown error occurred")
+        }
+        return Resource.Success(response)
+    }
+
+    suspend fun getSuggestQuestion(
+        headers: HashMap<String, String>,
+        body: SuggestQuestionRequest
+    ): Resource<SuggestionResponse> {
+        val response = try {
+            chatApi.getSuggestQuestion(headers, body)
+        } catch (e: Exception) {
+            return Resource.Error(message = e.message ?: "An unknown error occurred")
+        }
+        return Resource.Success(response)
+    }
+
+    suspend fun getAnswerRag(
+        headers: HashMap<String, String>,
+        body: RagRequest
+    ): Resource<RagResponse> {
+        val response = try {
+            chatApi.getAnswerRag(headers, body)
+        } catch (e: Exception) {
+            return Resource.Error(message = e.message ?: "An unknown error occurred")
+        }
+        return Resource.Success(response)
     }
 
 }

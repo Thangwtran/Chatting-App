@@ -2,9 +2,11 @@ package com.example.ui.chatpdf
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -12,11 +14,14 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.chatpdf.databinding.ActivityMainBinding
 import com.example.data.ChatRepository
+import com.example.data.api.RetrofitInstance
+import com.example.data.model.Message
 import com.example.ui.viewmodel.ChatViewModel
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var chatAdapter: ChatAdapter
+    private lateinit var questionSuggestAdapter: QuestionSuggestAdapter
     private lateinit var viewModel: ChatViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,9 +38,16 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         setupViews()
-        val repository = ChatRepository()
+        val api = RetrofitInstance.getApiService()
+        val repository = ChatRepository(api)
         viewModel = ViewModelProvider(this, ChatViewModel(repository).Factory(repository))[ChatViewModel::class.java]
         viewModel.fakeData()
+        viewModel.getSuggestQuestion(
+            language = "Tiếng Việt",
+            prompt = "Trích xuất 3 câu hỏi quan trọng nhất từ tài liệu.",
+            urlFile = "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
+        )
+        Log.d("TAG", "onCreate: ${viewModel.token}")
         observeData()
     }
 
@@ -43,6 +55,23 @@ class MainActivity : AppCompatActivity() {
         viewModel.messages.observe(this) { messages ->
             chatAdapter.submitList(messages)
             binding.recyclerViewMessages.scrollToPosition(messages.size - 1)
+        }
+
+        viewModel.answerRag.observe(this){
+            val botMessage = Message(text = it, isUser = false)
+            viewModel.addMessage(botMessage)
+        }
+
+        viewModel.suggestedQuestion.observe(this) { questions ->
+            val questionList = listOf(
+                QuestionSuggest(questions.quest1),
+                QuestionSuggest(questions.quest2),
+                QuestionSuggest(questions.quest3)
+            )
+            questionSuggestAdapter.submitList(questionList)
+        }
+        viewModel.isError.observe(this) { error ->
+            Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -63,13 +92,35 @@ class MainActivity : AppCompatActivity() {
         binding.inputBar.buttonSend.setOnClickListener {
             sendMessage()
         }
+        // Question Suggest
+        questionSuggestAdapter = QuestionSuggestAdapter()
+        binding.rvQuestionSuggest.adapter = questionSuggestAdapter
+//        val questionList = listOf(
+//            QuestionSuggest("Theo khảo sát mới nhất của McKinsey Global Survey về AI, có bao nhiêu phần trăm các tổ chức cho biết họ sử dụng AI trong ít nhất một chức năng kinh doanh?"),
+//            QuestionSuggest("Số liệu nào cho thấy các tổ chức đang tích cực quản lý các rủi ro liên quan đến AI tạo sinh, bao gồm các rủi ro về độ chính xác, an ninh mạng và vi phạm sở hữu trí tuệ?"),
+//            QuestionSuggest("Tỷ lệ phần trăm các tổ chức cho biết họ sử dụng AI tạo sinh để tạo ra đầu ra văn bản là bao nhiêu?")
+//        )
+//        questionSuggestAdapter.submitList(questionList)
 
+    }
+
+    fun botAnswer(message: String) {
+        viewModel.chatWithBot(
+            language = "Tiếng Việt",
+            prompt = message,
+            urlFile = "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
+        )
     }
 
     private fun sendMessage() {
         val messageText = binding.inputBar.editTextMessage.text.toString().trim()
         if (messageText.isNotEmpty()) {
             viewModel.sendMessage(messageText)
+            viewModel.chatWithBot(
+                language = "Tiếng Việt",
+                prompt = messageText,
+                urlFile = "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
+            )
 
             // Clear EditText
             binding.inputBar.editTextMessage.text?.clear()
