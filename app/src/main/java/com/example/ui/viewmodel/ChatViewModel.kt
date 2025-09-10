@@ -21,8 +21,13 @@ import java.io.File
 class ChatViewModel(
     private val chatRepository: ChatRepository
 ) : ViewModel() {
-    private val _messages = MutableLiveData<List<Message>>()
+    private val _messages = MutableLiveData<List<Message>>(emptyList())
     val messages: LiveData<List<Message>> = _messages
+
+    private var listMessages = mutableListOf<Message>()
+
+    private var _botResponse = MutableLiveData<Message?>()
+    var botResponse: LiveData<Message?> = _botResponse
 
     private val _fileResponse = MutableLiveData<String>() // file string
     val fileResponse: LiveData<String> = _fileResponse
@@ -30,14 +35,16 @@ class ChatViewModel(
     private val _suggestedQuestion = MutableLiveData<SuggestionResponse>()
     val suggestedQuestion: LiveData<SuggestionResponse> = _suggestedQuestion
 
-    private val _answerRag = MutableLiveData<String>()
-    val answerRag: LiveData<String> = _answerRag
-
     private val _isError = MutableLiveData<String>()
     val isError: LiveData<String> = _isError
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
+
+    init {
+        _isLoading.value = false
+//        fakeData()
+    }
 
     var token = ""
 
@@ -49,11 +56,6 @@ class ChatViewModel(
         "Authorization" to "Bearer $token"
     )
     val coroutineDispatcher = Dispatchers.IO
-
-    fun sendMessage(message: String) {
-        val newMessage = Message(text = message, isUser = true)
-        _messages.value = _messages.value?.plus(newMessage)
-    }
 
     fun uploadFile(file: File) {
         val requestBody = UploadFileRequest(
@@ -86,10 +88,10 @@ class ChatViewModel(
             prompt = prompt,
             urlFile = urlFile
         )
-        _isLoading.postValue(true)
+//        _isLoading.postValue(true)
         viewModelScope.launch(coroutineDispatcher) {
             val response = chatRepository.getSuggestQuestion(header, requestBody)
-            _isLoading.postValue(false)
+//            _isLoading.postValue(false)
             Log.d("ViewModel", "getSuggestQuestion: ${response.data}")
             when (response) {
                 is Resource.Error<*> -> _isError.postValue(
@@ -103,36 +105,50 @@ class ChatViewModel(
         }
     }
 
-    fun chatWithBot(
+    fun sendPromptToBot(
         language: String,
         prompt: String,
         urlFile: String
     ) {
+        val userMessage = Message(text = prompt, isUser = true)
+        listMessages.add(userMessage)
+        _messages.postValue(listMessages)
         val requestBody = RagRequest(
             language = language,
             chatInput = prompt,
             urlFile = urlFile
         )
-        _isLoading.postValue(true)
         viewModelScope.launch(coroutineDispatcher) {
             val response = chatRepository.getAnswerRag(header, requestBody)
-            _isLoading.postValue(false)
+            Log.d("ViewModel", "sendPromptToBot: $response")
             when (response) {
-                is Resource.Error<*> -> _isError.postValue(
-                    response.message ?: "An unknown error occurred"
-                )
+                is Resource.Error<*> ->{
+                    _isError.postValue(
+                        response.message ?: "An unknown error occurred"
+                    )
+                    val errorResponse =Message(text = response.message ?: "An unknown error occurred", isUser = false)
+                    listMessages.add(errorResponse)
+                    _messages.postValue(listMessages)
+                }
 
-                is Resource.Success<*> -> _answerRag.postValue(response.data?.msg ?: "")
+                is Resource.Success<*> -> {
+                    _isLoading.postValue(true)
+                    Log.d("ViewModel", "sendPromptToBot: ${response.data}")
+                    val responseMsg = response.data?.msg ?: "..."
+                    val botResponse = Message(text = responseMsg, isUser = false)
+                    _botResponse.postValue(botResponse)
+                    listMessages.add(botResponse)
+                    _messages.postValue(listMessages)
+                    _isLoading.postValue(false)
+                }
             }
         }
     }
 
-    fun fakeData() {
-        _messages.value = chatRepository.fakeDataMessages()
-    }
-
-    fun addMessage(message: Message) {
-        _messages.value = _messages.value?.plus(message)
+    private fun fakeData() {
+        val fakeMessages = chatRepository.fakeDataMessages()
+        listMessages.addAll(fakeMessages)
+        _messages.value = listMessages
     }
 
     inner class Factory(

@@ -5,5 +5,4 @@ data class Message(
     var text: String,
     val isUser: Boolean,
     val timestamp: Long = System.currentTimeMillis(),
-    var isTyping: Boolean = false
 )

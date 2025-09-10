@@ -24,6 +24,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var questionSuggestAdapter: QuestionSuggestAdapter
     private lateinit var viewModel: ChatViewModel
 
+    private val language = "Tiếng Việt"
+    private val urlFile =
+        "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -37,32 +41,50 @@ class MainActivity : AppCompatActivity() {
             view.setPadding(0, 0, 0, imeInsets.bottom.coerceAtLeast(navBarInsets.bottom))
             insets
         }
-        setupViews()
         val api = RetrofitInstance.getApiService()
         val repository = ChatRepository(api)
         viewModel = ViewModelProvider(
             this,
             ChatViewModel(repository).Factory(repository)
         )[ChatViewModel::class.java]
-        viewModel.fakeData()
         viewModel.getSuggestQuestion(
             language = "Tiếng Việt",
             prompt = "Trích xuất 3 câu hỏi quan trọng nhất từ tài liệu.",
             urlFile = "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
         )
         Log.d("TAG", "onCreate: ${viewModel.token}")
+        setupViews()
         observeData()
+
     }
 
     private fun observeData() {
         viewModel.messages.observe(this) { messages ->
-            chatAdapter.submitList(messages)
-            binding.recyclerViewMessages.scrollToPosition(messages.size - 1)
+            Log.d("TAG", "observeData: $messages")
+            if (messages.isEmpty()) {
+                binding.containerIntro.visibility = View.VISIBLE
+            } else {
+                binding.containerIntro.visibility = View.GONE // hoặc INVISIBLE
+                chatAdapter.submitList(messages)
+                binding.recyclerViewMessages.post {
+                    binding.recyclerViewMessages.scrollToPosition(chatAdapter.itemCount - 1)
+                }
+            }
+        }
+        viewModel.isLoading.observe(this) { isLoading ->
+            chatAdapter.isThinking = isLoading
+            if (isLoading) {
+                val thinkingMessage = Message(text = "Thinking...", isUser = false)
+                chatAdapter.addThinkingMessage(thinkingMessage)
+            }
         }
 
-        viewModel.answerRag.observe(this) {
-            val botMessage = Message(text = it, isUser = false)
-            viewModel.addMessage(botMessage)
+        // Khi bot có response
+        viewModel.botResponse.observe(this) { botMsg ->
+            if (botMsg != null) {
+                chatAdapter.updateLastMessage(botMsg)
+                chatAdapter.isThinking = false
+            }
         }
 
         viewModel.suggestedQuestion.observe(this) { questions ->
@@ -76,13 +98,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.isError.observe(this) { error ->
             Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
         }
+
         viewModel.isLoading.observe(this) { isLoading ->
-            if (isLoading) {
-                chatAdapter.startThinking()  // tạo message thinking + animation
-            } else {
-                val botReply = viewModel.answerRag.value ?: ""
-                chatAdapter.stopThinking(botReply) // update text + hide animation
-            }
+            binding.inputBar.buttonSend.isEnabled = !isLoading
+            Log.d("TAG", "setupViews: $isLoading")
         }
 
     }
@@ -92,8 +111,11 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerViewMessages.adapter = chatAdapter
         // 1. Nhấn Enter (Done/Send) trên bàn phím
         binding.inputBar.editTextMessage.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEND || actionId == EditorInfo.IME_ACTION_DONE) {
-                sendMessage()
+            val messageText = binding.inputBar.editTextMessage.text.toString().trim()
+            if ((actionId == EditorInfo.IME_ACTION_SEND || actionId == EditorInfo.IME_ACTION_DONE)
+                && viewModel.isLoading.value != true // kiểm tra loading
+            ) {
+                sendMessage(messageText)
                 true
             } else {
                 false
@@ -102,36 +124,28 @@ class MainActivity : AppCompatActivity() {
 
         // 2. Nhấn nút Send
         binding.inputBar.buttonSend.setOnClickListener {
-            sendMessage()
+            val messageText = binding.inputBar.editTextMessage.text.toString().trim()
+            sendMessage(messageText)
         }
-        // Question Suggest
-        questionSuggestAdapter = QuestionSuggestAdapter()
+        // Question Suggest adapter
+        questionSuggestAdapter = QuestionSuggestAdapter(object : OnSuggestTextSelected {
+            override fun onSuggestTextSelected(text: String) {
+                sendMessage(text)
+            }
+
+        })
         binding.rvQuestionSuggest.adapter = questionSuggestAdapter
-//        val questionList = listOf(
-//            QuestionSuggest("Theo khảo sát mới nhất của McKinsey Global Survey về AI, có bao nhiêu phần trăm các tổ chức cho biết họ sử dụng AI trong ít nhất một chức năng kinh doanh?"),
-//            QuestionSuggest("Số liệu nào cho thấy các tổ chức đang tích cực quản lý các rủi ro liên quan đến AI tạo sinh, bao gồm các rủi ro về độ chính xác, an ninh mạng và vi phạm sở hữu trí tuệ?"),
-//            QuestionSuggest("Tỷ lệ phần trăm các tổ chức cho biết họ sử dụng AI tạo sinh để tạo ra đầu ra văn bản là bao nhiêu?")
-//        )
-//        questionSuggestAdapter.submitList(questionList)
 
     }
 
-    fun botAnswer(message: String) {
-        viewModel.chatWithBot(
-            language = "Tiếng Việt",
-            prompt = message,
-            urlFile = "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
-        )
-    }
-
-    private fun sendMessage() {
-        val messageText = binding.inputBar.editTextMessage.text.toString().trim()
+    private fun sendMessage(messageText: String) {
+        Log.d("TAG", "sendMessage: $messageText")
         if (messageText.isNotEmpty()) {
-            viewModel.sendMessage(messageText)
-            viewModel.chatWithBot(
-                language = "Tiếng Việt",
+            Log.d("TAG", "send: $messageText")
+            viewModel.sendPromptToBot(
+                language = language,
                 prompt = messageText,
-                urlFile = "https://cglhceoknxoptndpqevt.supabase.co/storage/v1/object/file_gemini/file_gemini_1757389528990.pdf"
+                urlFile = urlFile
             )
 
             // Clear EditText
@@ -140,6 +154,8 @@ class MainActivity : AppCompatActivity() {
             // Ẩn bàn phím
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(binding.inputBar.editTextMessage.windowToken, 0)
+        }else{
+            Toast.makeText(this, "Vui lòng nhập câu hỏi", Toast.LENGTH_SHORT).show()
         }
     }
 

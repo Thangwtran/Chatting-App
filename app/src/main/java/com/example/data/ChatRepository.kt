@@ -58,7 +58,6 @@ class ChatRepository(
             Message(
                 text = "Typing...",
                 isUser = false,
-                isTyping = true
             )
         )
     }

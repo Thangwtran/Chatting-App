@@ -24,6 +24,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="end"
             android:padding="10dp"
+            android:maxWidth="300dp"
             android:text="Hello"
             android:textAlignment="viewEnd"
             android:textColor="@color/black"

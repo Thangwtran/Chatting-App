@@ -5,7 +5,9 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.chatpdf.databinding.ItemTextSuggestBinding
 
-class QuestionSuggestAdapter: RecyclerView.Adapter<QuestionSuggestAdapter.ViewHolder>() {
+class QuestionSuggestAdapter(
+    private val listener: OnSuggestTextSelected
+) : RecyclerView.Adapter<QuestionSuggestAdapter.ViewHolder>() {
 
     private val questionSuggests = mutableListOf<QuestionSuggest>()
 
@@ -32,7 +34,7 @@ class QuestionSuggestAdapter: RecyclerView.Adapter<QuestionSuggestAdapter.ViewHo
         holder: ViewHolder,
         position: Int
     ) {
-        holder.bind(questionSuggests[position])
+        holder.bind(questionSuggests[position], listener)
     }
 
     override fun getItemCount(): Int {
@@ -41,11 +43,18 @@ class QuestionSuggestAdapter: RecyclerView.Adapter<QuestionSuggestAdapter.ViewHo
 
     class ViewHolder(
         private val binding: ItemTextSuggestBinding
-    ): RecyclerView.ViewHolder(binding.root) {
-        fun bind(questionSuggest: QuestionSuggest){
+    ) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(questionSuggest: QuestionSuggest, listener: OnSuggestTextSelected) {
             binding.textQuestionSuggest.text = questionSuggest.text
+            binding.cardContainer.setOnClickListener {
+                listener.onSuggestTextSelected(questionSuggest.text)
+            }
         }
     }
+}
+
+interface OnSuggestTextSelected {
+    fun onSuggestTextSelected(text: String)
 }
 
 data class QuestionSuggest(
