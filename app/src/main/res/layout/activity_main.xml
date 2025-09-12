@@ -11,6 +11,7 @@
         android:id="@+id/recyclerViewMessages"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="32dp"
         android:layout_weight="1"
         android:padding="8dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
@@ -50,7 +51,7 @@
             android:layout_gravity="center"
             android:layout_marginTop="8dp"
             android:text="Bắt đầu nhận câu trả lời ngay!"
-            android:textColor="@color/white"
+            android:textColor="#1C1C1C"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -62,7 +63,7 @@
             android:gravity="center"
             android:paddingHorizontal="16dp"
             android:text="Chúng tôi đang gửi tệp của bạn đến AI để tìm câu trả lời tốt nhất."
-            android:textColor="#D3D3D3	" />
+            android:textColor="#1C1C1C" />
     </LinearLayout>
 
     <androidx.constraintlayout.widget.Guideline
@@ -81,6 +82,31 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
+        <LinearLayout
+            android:id="@+id/pdf_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginBottom="8dp"
+                android:text="Tệp đã chọn:"
+                android:textColor="#1C1C1C"
+                android:textSize="16sp" />
+
+            <include
+                android:id="@+id/pdf_picker"
+                layout="@layout/pdf_picker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginBottom="8dp" />
+        </LinearLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_question_suggest"
             android:layout_width="match_parent"
@@ -88,6 +114,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
             android:orientation="horizontal"
+            android:visibility="visible"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/item_text_suggest" />
 

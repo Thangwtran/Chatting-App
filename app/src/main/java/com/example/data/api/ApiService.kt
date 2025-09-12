@@ -12,7 +12,7 @@ import retrofit2.http.HeaderMap
 import retrofit2.http.POST
 
 interface ApiService {
-    @POST("/pdf-upload-file/")
+    @POST("pdf-upload-file")
     suspend fun upLoadFile(
         @HeaderMap header: HashMap<String, String>,
         @Body body: UploadFileRequest

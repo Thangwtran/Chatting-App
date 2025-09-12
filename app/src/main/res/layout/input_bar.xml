@@ -14,6 +14,7 @@
         android:text="Al-generated responses might be inaccurate or misleading."
         android:textAlignment="center"
         android:textSize="10sp"
+        android:textColor="#BEBEBE"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -32,13 +33,14 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:strokeColor="#513AB7"
+        app:strokeColor="#303F9F"
         app:strokeWidth="2dp">
 
         <LinearLayout
             android:id="@+id/linearLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="#E0E0E0"
             android:orientation="horizontal"
             android:padding="4dp"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -56,6 +58,7 @@
                 android:hint="Ask a question about this document"
                 android:maxLines="1"
                 android:padding="8dp"
+                android:textColorHint="#4D4B4B"
                 android:singleLine="true"
                 android:textSize="14sp"
                 tools:ignore="MissingClass" />
@@ -65,6 +68,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:foreground="?android:attr/selectableItemBackground"
                 android:layout_margin="4dp"
                 android:background="@drawable/bg_circle_btn"
                 android:foregroundGravity="center"

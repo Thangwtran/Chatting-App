@@ -4,12 +4,14 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.chatpdf.databinding.ActivityMainBinding
@@ -41,6 +43,14 @@ class MainActivity : AppCompatActivity() {
             view.setPadding(0, 0, 0, imeInsets.bottom.coerceAtLeast(navBarInsets.bottom))
             insets
         }
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        // hide gesture bar/ navigation bar
+        WindowCompat
+            .getInsetsController(window, window.decorView)
+            .hide(WindowInsetsCompat.Type.navigationBars())
+
         val api = RetrofitInstance.getApiService()
         val repository = ChatRepository(api)
         viewModel = ViewModelProvider(
@@ -63,8 +73,12 @@ class MainActivity : AppCompatActivity() {
             Log.d("TAG", "observeData: $messages")
             if (messages.isEmpty()) {
                 binding.containerIntro.visibility = View.VISIBLE
+                binding.pdfContainer.visibility = View.VISIBLE
+                binding.rvQuestionSuggest.visibility = View.GONE
             } else {
-                binding.containerIntro.visibility = View.GONE // hoặc INVISIBLE
+                binding.containerIntro.visibility = View.GONE
+                binding.pdfContainer.visibility = View.GONE
+                binding.rvQuestionSuggest.visibility = View.VISIBLE
                 chatAdapter.submitList(messages)
                 binding.recyclerViewMessages.post {
                     binding.recyclerViewMessages.scrollToPosition(chatAdapter.itemCount - 1)
@@ -73,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         }
         viewModel.isLoading.observe(this) { isLoading ->
             chatAdapter.isThinking = isLoading
+            Log.d("Main", "observeData: $isLoading")
             if (isLoading) {
                 val thinkingMessage = Message(text = "Thinking...", isUser = false)
                 chatAdapter.addThinkingMessage(thinkingMessage)
@@ -95,13 +110,13 @@ class MainActivity : AppCompatActivity() {
             )
             questionSuggestAdapter.submitList(questionList)
         }
+
         viewModel.isError.observe(this) { error ->
             Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
         }
 
         viewModel.isLoading.observe(this) { isLoading ->
             binding.inputBar.buttonSend.isEnabled = !isLoading
-            Log.d("TAG", "setupViews: $isLoading")
         }
 
     }
@@ -113,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         binding.inputBar.editTextMessage.setOnEditorActionListener { _, actionId, _ ->
             val messageText = binding.inputBar.editTextMessage.text.toString().trim()
             if ((actionId == EditorInfo.IME_ACTION_SEND || actionId == EditorInfo.IME_ACTION_DONE)
-                && viewModel.isLoading.value != true // kiểm tra loading
+                && viewModel.isLoading.value == false // kiểm tra loading
             ) {
                 sendMessage(messageText)
                 true
@@ -124,13 +139,17 @@ class MainActivity : AppCompatActivity() {
 
         // 2. Nhấn nút Send
         binding.inputBar.buttonSend.setOnClickListener {
-            val messageText = binding.inputBar.editTextMessage.text.toString().trim()
-            sendMessage(messageText)
+            if (viewModel.isLoading.value == false) {
+                val messageText = binding.inputBar.editTextMessage.text.toString().trim()
+                sendMessage(messageText)
+            }
         }
         // Question Suggest adapter
         questionSuggestAdapter = QuestionSuggestAdapter(object : OnSuggestTextSelected {
             override fun onSuggestTextSelected(text: String) {
-                sendMessage(text)
+                if (viewModel.isLoading.value == false) {
+                    sendMessage(text)
+                }
             }
 
         })
@@ -139,24 +158,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendMessage(messageText: String) {
-        Log.d("TAG", "sendMessage: $messageText")
         if (messageText.isNotEmpty()) {
-            Log.d("TAG", "send: $messageText")
             viewModel.sendPromptToBot(
                 language = language,
                 prompt = messageText,
                 urlFile = urlFile
             )
-
-            // Clear EditText
-            binding.inputBar.editTextMessage.text?.clear()
-
-            // Ẩn bàn phím
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(binding.inputBar.editTextMessage.windowToken, 0)
-        }else{
-            Toast.makeText(this, "Vui lòng nhập câu hỏi", Toast.LENGTH_SHORT).show()
         }
+        // Clear EditText
+        binding.inputBar.editTextMessage.text?.clear()
+
+        // Ẩn bàn phím
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(binding.inputBar.editTextMessage.windowToken, 0)
     }
 
     private fun hideKeyboard() {

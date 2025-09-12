@@ -113,6 +113,7 @@ class ChatViewModel(
         val userMessage = Message(text = prompt, isUser = true)
         listMessages.add(userMessage)
         _messages.postValue(listMessages)
+        _isLoading.postValue(true)
         val requestBody = RagRequest(
             language = language,
             chatInput = prompt,
@@ -122,17 +123,17 @@ class ChatViewModel(
             val response = chatRepository.getAnswerRag(header, requestBody)
             Log.d("ViewModel", "sendPromptToBot: $response")
             when (response) {
-                is Resource.Error<*> ->{
+                is Resource.Error<*> -> {
                     _isError.postValue(
                         response.message ?: "An unknown error occurred"
                     )
-                    val errorResponse =Message(text = response.message ?: "An unknown error occurred", isUser = false)
+                    val errorResponse = Message(text = response.message ?: "An unknown error occurred", isUser = false)
                     listMessages.add(errorResponse)
                     _messages.postValue(listMessages)
+                    _isLoading.postValue(false)
                 }
 
                 is Resource.Success<*> -> {
-                    _isLoading.postValue(true)
                     Log.d("ViewModel", "sendPromptToBot: ${response.data}")
                     val responseMsg = response.data?.msg ?: "..."
                     val botResponse = Message(text = responseMsg, isUser = false)
@@ -145,7 +146,7 @@ class ChatViewModel(
         }
     }
 
-    private fun fakeData() {
+    fun fakeData() {
         val fakeMessages = chatRepository.fakeDataMessages()
         listMessages.addAll(fakeMessages)
         _messages.value = listMessages
